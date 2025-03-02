@@ -14,7 +14,7 @@ pip install -r requirements.txt
 ```
 * Ensure all dependencies are installed and up to date
 
-### Executing Porgram
+### Executing Program
 
 * Run the program by executing sessionSaverScraper.py
 
@@ -24,7 +24,7 @@ pip install -r requirements.txt
 
 ## Help
 
-If there are any issues such as compatibility with different school districts, please contact me at email below:
+If there are any issues such as compatibility with different school districts, please contact me at the email below:
 
 ## Authors
 
