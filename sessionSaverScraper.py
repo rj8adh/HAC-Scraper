@@ -1,5 +1,3 @@
-# TODO Increase readability and add comments
-
 import requests
 from bs4 import BeautifulSoup
 import os
@@ -170,7 +168,7 @@ def getTranscriptGrades(tranSourceCode, hsOnly: bool = True):
                         print(f"Grade: {gradeLevel}, Course: {courseDescription} ({courseCode}), Average: N/A")
         else:
             print(f"Grade: {gradeLevel}, Course table not found.")
-            
+
     return allTranGrades
 
 
