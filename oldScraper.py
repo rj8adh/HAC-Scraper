@@ -1,5 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def login(url, username, password):
     session = requests.Session()
@@ -55,28 +59,26 @@ def login(url, username, password):
         print("Error: CSRF token input field not found.")
         return None
 
-# Testing Functionality
+
+# Testing functionality
 login_url = "https://accesscenter.roundrockisd.org/HomeAccess/Account/LogOn?ReturnUrl=%2fhomeaccess%2f"
-username = ""
-password = ""
+username = os.getenv('HACUSERNAME')
+password = os.getenv('HACPASSWORD')
 
-session = login(login_url, username, password)
+# print(username, password)
 
-if session:
-    # Use the session for requests moving forward
-    try:
-        gradesSoup = login(login_url, username, password)
-    except requests.exceptions.RequestException as e:
-        print(f"Error after login: {e}")
+try:
+    gradesSoup = login(login_url, username, password)
+except requests.exceptions.RequestException as e:
+    print(f"Error after login: {e}")
+
+try:
+    transcriptSoup = login("https://accesscenter.roundrockisd.org/HomeAccess/Grades/Transcript", username, password)
+except requests.exceptions.RequestException as e:
+    print(f"Error after login for transcript: {e}")
+
+if gradesSoup:
+    print("Successfully Logged In")
 
 else:
     print("Login process failed.")
-
-allGradeBoxes = gradesSoup.find("tbody")
-
-gradeBoxes = allGradeBoxes.find_all("tr")
-
-for gradeBox in gradeBoxes:
-    className = gradeBox.find("a", attrs={'id':'courseName'})
-    grade = gradeBox.find("a", attrs={'id':'average'})
-    print(f"Your average in {className.getText()} is {grade.getText()}")
