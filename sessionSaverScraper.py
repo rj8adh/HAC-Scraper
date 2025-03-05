@@ -84,6 +84,82 @@ def getHomeScreen(session):
         return None
     
 
+# Fetching all transcript data    
+def getTranscript(session):
+    try:
+        transcriptURL = BASEURL + "HomeAccess/Content/Student/Transcript.aspx"
+        response = session.get(transcriptURL)
+        response.raise_for_status()
+
+        print("\nTRANSCRIPT PROCESSED SUCCESSFULLY\n")
+        return response.text
+    
+    except requests.exceptions.RequestException as e:
+        print(f"Error retrieving transcript: {e}")
+        return None
+
+
+# TODO Get this script working properly
+def getAssignmentPageLinks(homeSourceCode):
+    classAndPageLinks = {}
+    homeSoup = BeautifulSoup(homeSourceCode, 'html.parser')
+
+    # Finding all boxes containing grades
+    allGradeBoxes = homeSoup.find("tbody")
+    gradeBoxes = allGradeBoxes.find_all("tr")
+
+    for gradeBox in gradeBoxes:
+        # Filtering to get course name and corresponding grade average
+        className = gradeBox.find("a", attrs={'id':'courseName'}).getText()
+        grade = gradeBox.find("a", attrs={'id':'average'})
+        print(grade['href'])
+        for property in grade:
+            print(f"Property of grade: {property}")
+        classAndPageLinks[className] = grade
+    
+    return classAndPageLinks
+
+
+def getAssignmentsForClass(session, sectionKey: str):
+    assignmentURL = "https://accesscenter.roundrockisd.org/HomeAccess/Content/Student/AssignmentsFromRCPopUp.aspx"
+    params = {
+        "section_key": sectionKey,
+        "course_session": "1",
+        "RC_RUN": "3",
+        "MARK_TITLE": "MP   .Trim()",
+        "MARK_TYPE": "MP   .Trim()",
+        "SLOT_INDEX": "1",
+    }
+
+    response = session.get(assignmentURL, params=params)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        print("Request successful!")
+        return response.content 
+    else:
+        print(f"Request failed with status code: {response.status_code}")
+        print(response.text) # For debugging purposes
+
+loginURL = BASEURL + "HomeAccess/Account/LogOn?ReturnUrl=%2fhomeaccess%2f"
+
+username = os.getenv('HACUSERNAME')
+password = os.getenv('HACPASSWORD')
+
+session = login(loginURL, username, password)
+homeSC = getHomeScreen(session)
+getAssignmentsForClass(session, "2353121") # TODO Get id from href a tag with "courseName" id
+
+
+# Current Testing Area (will make it a seperate script tomorrow)
+
+
+
+
+
+
+
+
 # Parsing grades from homepage info
 def parseGrades(homeSourceCode):
     classAndGrades = {}
@@ -102,21 +178,6 @@ def parseGrades(homeSourceCode):
         classAndGrades[className] = grade
     
     return classAndGrades
-
-
-# Fetching all transcript data    
-def getTranscript(session):
-    try:
-        transcriptURL = BASEURL + "HomeAccess/Content/Student/Transcript.aspx"
-        response = session.get(transcriptURL)
-        response.raise_for_status()
-
-        print("\nTRANSCRIPT PROCESSED SUCCESSFULLY\n")
-        return response.text
-    
-    except requests.exceptions.RequestException as e:
-        print(f"Error retrieving transcript: {e}")
-        return None
 
 
 # Parsing transcript grades from transcript source code
@@ -236,16 +297,21 @@ def modifyTranGrades(tranGrades: list, gradesToModify: dict):
 
 
 # Testing usage
-loginURL = BASEURL + "HomeAccess/Account/LogOn?ReturnUrl=%2fhomeaccess%2f"
+# loginURL = BASEURL + "HomeAccess/Account/LogOn?ReturnUrl=%2fhomeaccess%2f"
 
-username = os.getenv('HACUSERNAME')
-password = os.getenv('HACPASSWORD')
+# username = os.getenv('HACUSERNAME')
+# password = os.getenv('HACPASSWORD')
 
-session = login(loginURL, username, password)
-homeSoup = getHomeScreen(session)
-grades = parseGrades(homeSoup)
-transcript = getTranscript(session)
-tranGrades = getTranscriptGrades(transcript)
-tranGrades = modifyTranGrades(tranGrades, {'CHEM':'0'})
-calcGPA(tranGrades, ignoreClasses=['TACS1', 'TAGMPD', 'LIFEFIT', 'W HIST', 'APTACSAL', 'IED', 'TH1TECH', 'VIDGD'], difScaleClasses={'SPAN 1':5.0})
-getOfficialGPA(transcript)
+# session = login(loginURL, username, password)
+# homeSC = getHomeScreen(session)
+# # grades = parseGrades(homeSC)
+# # transcript = getTranscript(session)
+# # tranGrades = getTranscriptGrades(transcript)
+# # test = getAssignmentPageLinks(homeSC)
+# getAssignments(session)
+# tranGrades = modifyTranGrades(tranGrades, {'CHEM':'0'})
+# calcGPA(tranGrades, ignoreClasses=['TACS1', 'TAGMPD', 'LIFEFIT', 'W HIST', 'APTACSAL', 'IED', 'TH1TECH', 'VIDGD'], difScaleClasses={'SPAN 1':5.0})
+# getOfficialGPA(transcript)
+
+# https://accesscenter.roundrockisd.org/HomeAccess/Content/Student/AssignmentsFromRCPopUp.aspx
+# https://accesscenter.roundrockisd.org/HomeAccess/Content/Student/AssignmentsFromRCPopUp.aspx?section_key=2754856&course_session=1&RC_RUN=3&MARK_TITLE=MP%20%20%20.Trim()&MARK_TYPE=MP%20%20%20.Trim()&SLOT_INDEX=1'
