@@ -1,13 +1,14 @@
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 import os
+import re
 
 load_dotenv()
 MAXGPA = float(os.getenv("MAXGPA"))
 BASEURL = os.getenv("BASELINK")
 
 # TODO Get this script working properly
-def getAssignmentPageLinks(homeSourceCode):
+def getAssignmentPageIDs(homeSourceCode, returnID: bool = True):
     classAndPageLinks = {}
     homeSoup = BeautifulSoup(homeSourceCode, 'html.parser')
 
@@ -16,15 +17,23 @@ def getAssignmentPageLinks(homeSourceCode):
     gradeBoxes = allGradeBoxes.find_all("tr")
 
     for gradeBox in gradeBoxes:
-        # Filtering to get course name and corresponding grade average
+        # Filtering to get course name and necessary details
         className = gradeBox.find("a", attrs={'id':'courseName'}).getText()
         grade = gradeBox.find("a", attrs={'id':'average'})
-        print(grade['href'])
-        for property in grade:
-            print(f"Property of grade: {property}")
-        classAndPageLinks[className] = grade
+        # print(grade['href'])
+        classAndPageLinks[className] = grade['href']
+
+    for className in classAndPageLinks:
+        assignmentPageID = re.findall(r'\d+', classAndPageLinks[className])[0] # Finding all numbers in the url and keeping the first one
+        classAndPageLinks[className] = assignmentPageID
+        # print(assignmentPageID)
     
     return classAndPageLinks
+
+
+# TODO Parse assignments from assignments request data
+def parseAssignments(assignmentSC):
+    return
 
 
 # Parsing grades from homepage info
@@ -40,7 +49,7 @@ def parseGrades(homeSourceCode):
         # Filtering to get course name and corresponding grade average
         className = gradeBox.find("a", attrs={'id':'courseName'}).getText()
         grade = gradeBox.find("a", attrs={'id':'average'}).getText()
-
+    
         print(f"Your average in {className} is {grade}")
         classAndGrades[className] = grade
     

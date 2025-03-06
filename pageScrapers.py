@@ -40,6 +40,7 @@ def getTranscript(session):
 
 def getAssignmentsForClass(session, sectionKey: str):
     assignmentURL = "https://accesscenter.roundrockisd.org/HomeAccess/Content/Student/AssignmentsFromRCPopUp.aspx"
+    # API parameters/details
     params = {
         "section_key": sectionKey,
         "course_session": "1",
@@ -53,8 +54,9 @@ def getAssignmentsForClass(session, sectionKey: str):
 
     # Check if the request was successful
     if response.status_code == 200:
-        print("Request successful!")
+        print("Request to assignment details successful")
         return response.content 
     else:
+        # Some debugging stuff in case request wasn't successful
         print(f"Request failed with status code: {response.status_code}")
-        print(response.text) # For debugging purposes
+        print(response.text)
