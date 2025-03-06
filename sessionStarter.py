@@ -1,11 +1,14 @@
 import requests
 from bs4 import BeautifulSoup
-import os
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
+MAXGPA = float(os.getenv("MAXGPA"))
+BASEURL = os.getenv("BASELINK")
 
 def login(url, username, password):
+    # Starting a requests session to save and transfer cookies/data
     session = requests.Session()
 
     try:
@@ -15,7 +18,7 @@ def login(url, username, password):
         soup = BeautifulSoup(response.content, 'html.parser')
         csrf_token = soup.find('input', {'name': '__RequestVerificationToken'})['value']
 
-        # Setting up the data for login
+        # Prepare login data
         data = {
             '__RequestVerificationToken': csrf_token,
             'SCKTY00328510CustomEnabled': 'False',
@@ -28,57 +31,39 @@ def login(url, username, password):
             'LogOnDetails.Password': password,
         }
 
-        # Sending post request to login to HAC
-        response = session.post(url, data=data)
-        # print(response.status_code)
-        # print(response.text)
+        # Getting link to test if login is successful
+        login_post_url = url.split("Account")[0] + "Account/LogOn?ReturnUrl=%2fhomeaccess%2f"
+        
+        # This is just to make this script not seem like a bot
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+
+        response = session.post(login_post_url, data=data, headers=headers)
+        
         response.raise_for_status()
 
-        # Check for successful login (this may change if they update HAC's code)
-        updatedSoup = BeautifulSoup(response.content, 'html.parser')
+        # The rest of the code is checking for successful login:
+
+        updatedSoup = BeautifulSoup(response.text, 'html.parser')
+        # print(soup.prettify())
 
         allTitles = updatedSoup.find_all("title")
-
-        print(updatedSoup.prettify())
 
         for title in allTitles:
             print(title.getText())
             # Making sure the login was successful and the page has changed to what we want
             if "Home View Summary" == title.getText(): # Change this check if HAC sourecode changes
                 print("Login successful!")
-                return updatedSoup
+                return session
         else:
-            print("Login failed. Check credentials or website sourcecode.")
+            print("Login failed. Check credentials or website structure.")
             return None
 
+    # Error handling
     except requests.exceptions.RequestException as e:
         print(f"Error during login: {e}")
         return None
-    
     except TypeError:
         print("Error: CSRF token input field not found.")
         return None
-
-
-# Testing functionality
-login_url = "https://accesscenter.roundrockisd.org/HomeAccess/Account/LogOn?ReturnUrl=%2fhomeaccess%2f"
-username = os.getenv('HACUSERNAME')
-password = os.getenv('HACPASSWORD')
-
-# print(username, password)
-
-try:
-    gradesSoup = login(login_url, username, password)
-except requests.exceptions.RequestException as e:
-    print(f"Error after login: {e}")
-
-try:
-    transcriptSoup = login("https://accesscenter.roundrockisd.org/HomeAccess/Grades/Transcript", username, password)
-except requests.exceptions.RequestException as e:
-    print(f"Error after login for transcript: {e}")
-
-if gradesSoup:
-    print("Successfully Logged In")
-
-else:
-    print("Login process failed.")

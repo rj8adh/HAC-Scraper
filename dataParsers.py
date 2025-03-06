@@ -1,103 +1,10 @@
-import requests
 from bs4 import BeautifulSoup
-import os
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
-MAXGPA = 6.0
-BASEURL = "https://accesscenter.roundrockisd.org/"
-
-def login(url, username, password):
-    # Starting a requests session to save and transfer cookies/data
-    session = requests.Session()
-
-    try:
-        # Get login page and valid CSRF token
-        response = session.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'html.parser')
-        csrf_token = soup.find('input', {'name': '__RequestVerificationToken'})['value']
-
-        # Prepare login data
-        data = {
-            '__RequestVerificationToken': csrf_token,
-            'SCKTY00328510CustomEnabled': 'False',
-            'SCKTY00436568CustomEnabled': 'False',
-            'Database': '10',
-            'VerificationOption': 'UsernamePassword',
-            'LogOnDetails.UserName': username,
-            'tempUN': '',
-            'tempPW': '',
-            'LogOnDetails.Password': password,
-        }
-
-        # Getting link to test if login is successful
-        login_post_url = url.split("Account")[0] + "Account/LogOn?ReturnUrl=%2fhomeaccess%2f"
-        
-        # This is just to make this script not seem like a bot
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-
-        response = session.post(login_post_url, data=data, headers=headers)
-        
-        response.raise_for_status()
-
-        # The rest of the code is checking for successful login:
-
-        updatedSoup = BeautifulSoup(response.text, 'html.parser')
-        # print(soup.prettify())
-
-        allTitles = updatedSoup.find_all("title")
-
-        for title in allTitles:
-            print(title.getText())
-            # Making sure the login was successful and the page has changed to what we want
-            if "Home View Summary" == title.getText(): # Change this check if HAC sourecode changes
-                print("Login successful!")
-                return session
-        else:
-            print("Login failed. Check credentials or website structure.")
-            return None
-
-    # Error handling
-    except requests.exceptions.RequestException as e:
-        print(f"Error during login: {e}")
-        return None
-    except TypeError:
-        print("Error: CSRF token input field not found.")
-        return None
-    
-
-# Scraping data from HAC front page
-def getHomeScreen(session):
-    home_url = BASEURL + "HomeAccess/Home/WeekView"
-    try:
-        response = session.get(home_url)
-        response.raise_for_status()
-
-        print("\nHOMEPAGE PROCESSED SUCCESSFULLY\n")
-        return response.content
-    
-    except requests.exceptions.RequestException as e:
-        print(f"Error retrieving transcript: {e}")
-        return None
-    
-
-# Fetching all transcript data    
-def getTranscript(session):
-    try:
-        transcriptURL = BASEURL + "HomeAccess/Content/Student/Transcript.aspx"
-        response = session.get(transcriptURL)
-        response.raise_for_status()
-
-        print("\nTRANSCRIPT PROCESSED SUCCESSFULLY\n")
-        return response.text
-    
-    except requests.exceptions.RequestException as e:
-        print(f"Error retrieving transcript: {e}")
-        return None
-
+MAXGPA = float(os.getenv("MAXGPA"))
+BASEURL = os.getenv("BASELINK")
 
 # TODO Get this script working properly
 def getAssignmentPageLinks(homeSourceCode):
@@ -118,46 +25,6 @@ def getAssignmentPageLinks(homeSourceCode):
         classAndPageLinks[className] = grade
     
     return classAndPageLinks
-
-
-def getAssignmentsForClass(session, sectionKey: str):
-    assignmentURL = "https://accesscenter.roundrockisd.org/HomeAccess/Content/Student/AssignmentsFromRCPopUp.aspx"
-    params = {
-        "section_key": sectionKey,
-        "course_session": "1",
-        "RC_RUN": "3",
-        "MARK_TITLE": "MP   .Trim()",
-        "MARK_TYPE": "MP   .Trim()",
-        "SLOT_INDEX": "1",
-    }
-
-    response = session.get(assignmentURL, params=params)
-
-    # Check if the request was successful
-    if response.status_code == 200:
-        print("Request successful!")
-        return response.content 
-    else:
-        print(f"Request failed with status code: {response.status_code}")
-        print(response.text) # For debugging purposes
-
-loginURL = BASEURL + "HomeAccess/Account/LogOn?ReturnUrl=%2fhomeaccess%2f"
-
-username = os.getenv('HACUSERNAME')
-password = os.getenv('HACPASSWORD')
-
-session = login(loginURL, username, password)
-homeSC = getHomeScreen(session)
-getAssignmentsForClass(session, "2353121") # TODO Get id from href a tag with "courseName" id
-
-
-# Current Testing Area (will make it a seperate script tomorrow)
-
-
-
-
-
-
 
 
 # Parsing grades from homepage info
@@ -294,24 +161,3 @@ def modifyTranGrades(tranGrades: list, gradesToModify: dict):
     ] # Using list comprehension to overcomplicate things 😎
 
     return updatedTranGrades
-
-
-# Testing usage
-# loginURL = BASEURL + "HomeAccess/Account/LogOn?ReturnUrl=%2fhomeaccess%2f"
-
-# username = os.getenv('HACUSERNAME')
-# password = os.getenv('HACPASSWORD')
-
-# session = login(loginURL, username, password)
-# homeSC = getHomeScreen(session)
-# # grades = parseGrades(homeSC)
-# # transcript = getTranscript(session)
-# # tranGrades = getTranscriptGrades(transcript)
-# # test = getAssignmentPageLinks(homeSC)
-# getAssignments(session)
-# tranGrades = modifyTranGrades(tranGrades, {'CHEM':'0'})
-# calcGPA(tranGrades, ignoreClasses=['TACS1', 'TAGMPD', 'LIFEFIT', 'W HIST', 'APTACSAL', 'IED', 'TH1TECH', 'VIDGD'], difScaleClasses={'SPAN 1':5.0})
-# getOfficialGPA(transcript)
-
-# https://accesscenter.roundrockisd.org/HomeAccess/Content/Student/AssignmentsFromRCPopUp.aspx
-# https://accesscenter.roundrockisd.org/HomeAccess/Content/Student/AssignmentsFromRCPopUp.aspx?section_key=2754856&course_session=1&RC_RUN=3&MARK_TITLE=MP%20%20%20.Trim()&MARK_TYPE=MP%20%20%20.Trim()&SLOT_INDEX=1'
