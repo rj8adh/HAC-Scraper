@@ -17,8 +17,8 @@ pip install -r requirements.txt
 ### Executing Program
 
 * Configure the program by adding a .env file with your HAC username, password, max GPA, and HAC base URL
-    *A base URL is just the link from the beginning to the backslash right before the word HomeAcces in the URL
-    
+    * A base URL is just the link from the beginning to the backslash right before the word HomeAcces in the URL
+
 * Run the program by executing allFunctionality.py
 
 ### Expected Output From Testing Data
