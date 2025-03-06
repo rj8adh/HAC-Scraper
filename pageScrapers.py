@@ -38,19 +38,23 @@ def getTranscript(session):
         return None
 
 
-def getAssignmentsForClass(session, sectionKey: str):
-    assignmentURL = "https://accesscenter.roundrockisd.org/HomeAccess/Content/Student/AssignmentsFromRCPopUp.aspx"
+def getAssignmentsForClass(session, sectionKey: str, course_session: str, rc_run: str):
+    assignmentURL = BASEURL + "HomeAccess/Content/Student/AssignmentsFromRCPopUp.aspx"
     # API parameters/details
     params = {
         "section_key": sectionKey,
-        "course_session": "1",
-        "RC_RUN": "3",
+        "course_session": course_session,
+        "RC_RUN": rc_run,
         "MARK_TITLE": "MP   .Trim()",
         "MARK_TYPE": "MP   .Trim()",
         "SLOT_INDEX": "1",
     }
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+    }
 
-    response = session.get(assignmentURL, params=params)
+    response = session.get(assignmentURL, params=params, headers=headers)
 
     # Check if the request was successful
     if response.status_code == 200:

@@ -23,10 +23,12 @@ def getAssignmentPageIDs(homeSourceCode, returnID: bool = True):
         # print(grade['href'])
         classAndPageLinks[className] = grade['href']
 
-    for className in classAndPageLinks:
-        assignmentPageID = re.findall(r'\d+', classAndPageLinks[className])[0] # Finding all numbers in the url and keeping the first one
-        classAndPageLinks[className] = assignmentPageID
-        # print(assignmentPageID)
+    # Return IDs for each class instead of the base href value
+    if returnID:
+        for className in classAndPageLinks:
+            assignmentPageID = re.findall(r'\d+', classAndPageLinks[className]) # Finding all numbers in the url
+            classAndPageLinks[className] = assignmentPageID
+            # print(f"Assignment Page Details{assignmentPageID}")
     
     return classAndPageLinks
 
