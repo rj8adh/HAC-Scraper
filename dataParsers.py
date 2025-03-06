@@ -7,7 +7,7 @@ load_dotenv()
 MAXGPA = float(os.getenv("MAXGPA"))
 BASEURL = os.getenv("BASELINK")
 
-# TODO Get this script working properly
+# This function is currently outdated, it's still here in case I need it to scrape the page on click of class average
 def getAssignmentPageIDs(homeSourceCode, returnID: bool = True):
     classAndPageLinks = {}
     homeSoup = BeautifulSoup(homeSourceCode, 'html.parser')
@@ -33,9 +33,81 @@ def getAssignmentPageIDs(homeSourceCode, returnID: bool = True):
     return classAndPageLinks
 
 
-# TODO Parse assignments from assignments request data
+# Returns a dictionary with the key being the class name and the value being a list of all assignments and their corresponding attributes
 def parseAssignments(assignmentSC):
-    return
+    assignmentSoup = BeautifulSoup(assignmentSC, 'html.parser')
+    allClassData = {}
+    allClassNames = []
+
+    # Get all class names
+    assignmentHeaders = assignmentSoup.find_all('div', attrs={'class':'AssignmentClass'})
+    for header in assignmentHeaders:
+        className = header.find('a', attrs={'class':'sg-header-heading'}).getText().strip()
+        allClassNames.append(className)
+
+    # Find all assignment tables
+    assignmentTables = assignmentSoup.find_all('table', id=lambda x: x and x.startswith('plnMain_rptAssigmnetsByCourse_dgCourseAssignments_')) # The "x and" part is just to make sure that whitespaces dont mess it up
+    # print(f"ASSIGNMENT TABLES:{assignmentTables}")
+    for classKey, assignmentTable in enumerate(assignmentTables): # Making classKey a counter starting from 0 adding one each iteration
+
+        if allClassNames[classKey] not in allClassData:
+            allClassData[allClassNames[classKey]] = {'assignments': [], 'categories': []}
+
+        assignments = []
+        rows = assignmentTable.find_all('tr')
+        rows = rows[1:]  # Skipping the header row
+
+        for row in rows:
+            # Getting every row's data (basically getting each column for each row)
+            cols = row.find_all('td')
+            if cols:
+                assignmentData = {}
+                try:
+                    assignmentData['due_date'] = cols[0].text.strip()
+                    assignmentData['assigned_date'] = cols[1].text.strip()
+                    assignmentData['name'] = cols[2].text.strip()
+                    assignmentData['category'] = cols[3].text.strip()
+                    assignmentData['score'] = cols[4].text.strip()
+                    assignmentData['weight'] = cols[5].text.strip()
+                    assignmentData['weighted_score'] = cols[6].text.strip()
+                    assignmentData['total_points'] = cols[7].text.strip()
+                    assignmentData['weighted_total_points'] = cols[8].text.strip()
+                except IndexError: # Some assignments don't have variables for certain fields
+                    continue
+                assignments.append(assignmentData)
+                # print(f"\nUPDATED ASSIGNMENTS {assignments}\n")
+        allClassData[allClassNames[classKey]]['assignments'] = assignments
+
+    # Find all category tables
+    categTables = assignmentSoup.find_all('table', id=lambda x: x and x.startswith('plnMain_rptAssigmnetsByCourse_dgCourseCategories_'))
+
+    for classKey, table in enumerate(categTables):
+
+        if allClassNames[classKey] not in allClassData:
+            allClassData[allClassNames[classKey]] = {'assignments': [], 'categories': []}
+
+        categRows = table.find_all('tr')
+        categRows = categRows[1:-1]  # Skipping header and total rows
+        categories = []
+
+        # Getting information on each category for each class
+        for row in categRows:
+            cols = row.find_all('td')
+            if cols:
+                categData = {}
+                try:
+                    categData['category_name'] = cols[0].text.strip()
+                    categData['student_points'] = cols[1].text.strip()
+                    categData['max_points'] = cols[2].text.strip()
+                    categData['percent'] = cols[3].text.strip()
+                    categData['category_weight'] = cols[4].text.strip()
+                    categData['category_points'] = cols[5].text.strip()
+                except IndexError:
+                    continue
+                categories.append(categData)
+        allClassData[allClassNames[classKey]]['categories'] = categories
+
+    return allClassData
 
 
 # Parsing grades from homepage info

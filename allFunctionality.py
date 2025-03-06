@@ -15,9 +15,19 @@ homeSC = getHomeScreen(session)
 grades = parseGrades(homeSC)
 transcript = getTranscript(session)
 tranGrades = getTranscriptGrades(transcript)
-classAssignmentIDs = getAssignmentPageIDs(homeSC)
-for id in classAssignmentIDs:
-    print(f"\n\n{getAssignmentsForClass(session, id[0], id[1], id[2])}\n\n")
+# classAssignmentIDs = getAssignmentPageIDs(homeSC) # No longer useful for new assignment scraping strategy
+allAssignmentData = getAssignmentsForClass(session)
+classAssignments = parseAssignments(allAssignmentData)
+for className in classAssignments:
+    print(f"\n\nASSIGNMENTS FOR {className}:\n\n")
+    for detail in classAssignments[className]:
+        for detailData in classAssignments[className][detail]:
+            for data in detailData:
+                print(f"{data}: {detailData[data]}")
+            print()
+
+
+# print(getAssignmentsForClass(session, "2353121", "1", "3"))
 tranGrades = modifyTranGrades(tranGrades, {'CHEM':'0'})
 calcGPA(tranGrades, ignoreClasses=['TACS1', 'TAGMPD', 'LIFEFIT', 'W HIST', 'APTACSAL', 'IED', 'TH1TECH', 'VIDGD'], difScaleClasses={'SPAN 1':5.0})
 getOfficialGPA(transcript)

@@ -37,6 +37,9 @@ Aarjit Adhikari
 [@microrew0@gmail.com](https://gmail.com)
 
 ## Version History
-
+* 0.2
+    * Upgraded/Reworked Assignment Reading Feature
+* 0.15
+    * Added Assignment Reading Feature
 * 0.1
     * Initial Release
