@@ -7,6 +7,7 @@ load_dotenv()
 MAXGPA = float(os.getenv("MAXGPA"))
 BASEURL = os.getenv("BASELINK")
 
+
 # This function is currently outdated, it's still here in case I need it to scrape the page on click of class average
 def getAssignmentPageIDs(homeSourceCode, returnID: bool = True):
     classAndPageLinks = {}
@@ -26,9 +27,7 @@ def getAssignmentPageIDs(homeSourceCode, returnID: bool = True):
     # Return IDs for each class instead of the base href value
     if returnID:
         for className in classAndPageLinks:
-            assignmentPageID = re.findall(
-                r'\d+',
-                classAndPageLinks[className])  # Finding all numbers in the url
+            assignmentPageID = re.findall(r'\d+',classAndPageLinks[className])  # Finding all numbers in the url
             classAndPageLinks[className] = assignmentPageID
             # print(f"Assignment Page Details{assignmentPageID}")
 
@@ -41,73 +40,55 @@ def parseAssignments(assignmentSC):
     allClassData = {}
     allClassNames = []
 
-    # Get all class names
-    assignmentHeaders = assignmentSoup.find_all(
-        'div', attrs={'class': 'AssignmentClass'})
+    # Getting all class names in correct format
+    assignmentHeaders = assignmentSoup.find_all('div', attrs={'class': 'AssignmentClass'})
     for header in assignmentHeaders:
-        className = header.find('a', attrs={
-            'class': 'sg-header-heading'
-        }).getText().strip()
-        allClassNames.append(className)
+        className = header.find('a', attrs={'class': 'sg-header-heading'}).getText().strip()
+        allClassNames.append(className.split("   ")[-1].strip())
 
-    # Find all assignment tables
-    assignmentTables = assignmentSoup.find_all(
-        'table',
-        id=lambda x: x and x.startswith(
-            'plnMain_rptAssigmnetsByCourse_dgCourseAssignments_')
-    )  # The "x and" part is just to make sure that whitespaces dont mess it up
+    assignmentTables = assignmentSoup.select('table[id^="plnMain_rptAssigmnetsByCourse_dgCourseAssignments_"]') # Finding all table tags with an id that starts with that mess
     # print(f"ASSIGNMENT TABLES:{assignmentTables}")
-    for classKey, assignmentTable in enumerate(
-            assignmentTables
-    ):  # Making classKey a counter starting from 0 adding one each iteration
+    for classKey, assignmentTable in enumerate(assignmentTables):  # Making classKey a counter starting from 0 adding one each iteration
 
         if allClassNames[classKey] not in allClassData:
-            allClassData[allClassNames[classKey]] = {
-                'assignments': [],
-                'categories': []
-            }
+            allClassData[allClassNames[classKey]] = {'assignments': [], 'categories': []}
 
         assignments = []
         rows = assignmentTable.find_all('tr')
-        rows = rows[1:]  # Skipping the header row
+        rows = rows[1:] # Skipping the header row
 
         for row in rows:
-            # Getting every row's data (basically getting each column for each row)
+            # Getting every row's data (basically getting each column data for each row)
             cols = row.find_all('td')
             if cols:
                 assignmentData = {}
                 try:
                     assignmentData['due_date'] = cols[0].text.strip()
                     assignmentData['assigned_date'] = cols[1].text.strip()
-                    assignmentData['name'] = cols[2].text.strip("\n*\n").strip("\r\n").strip() # Removing junk
-                    print("Name:", repr(assignmentData['name']))
+                    assignmentData['name'] = cols[2].text.strip("\n*\n").strip("\r\n").strip()
+                    # print("Name:", repr(assignmentData['name']))
                     assignmentData['category'] = cols[3].text.strip()
                     assignmentData['score'] = cols[4].text.strip()
                     assignmentData['weight'] = cols[5].text.strip()
                     assignmentData['weighted_score'] = cols[6].text.strip()
                     assignmentData['total_points'] = cols[7].text.strip()
                     assignmentData['weighted_total_points'] = cols[8].text.strip()
-                except IndexError:  # Some assignments don't have variables for certain fields
+                except Exception as e: 
+                    print(f"ERROR: {e}")
                     continue
                 assignments.append(assignmentData)
                 # print(f"\nUPDATED ASSIGNMENTS {assignments}\n")
         allClassData[allClassNames[classKey]]['assignments'] = assignments
 
-    # Find all category tables
-    categTables = assignmentSoup.find_all(
-        'table',
-        id=lambda x: x and x.startswith('plnMain_rptAssigmnetsByCourse_dgCourseCategories_'))
-
+    # Finding all category tables
+    categTables = assignmentSoup.select('table[id^="plnMain_rptAssigmnetsByCourse_dgCourseCategories_"]')
     for classKey, table in enumerate(categTables):
 
         if allClassNames[classKey] not in allClassData:
-            allClassData[allClassNames[classKey]] = {
-                'assignments': [],
-                'categories': []
-            }
+            allClassData[allClassNames[classKey]] = {'assignments': [], 'categories': []}
 
         categRows = table.find_all('tr')
-        categRows = categRows[1:-1]  # Skipping header and total rows
+        categRows = categRows[1:-1]  # Skipping the header and total rows
         categories = []
 
         # Getting information on each category for each class
@@ -122,7 +103,8 @@ def parseAssignments(assignmentSC):
                     categData['percent'] = cols[3].text.strip()
                     categData['category_weight'] = cols[4].text.strip()
                     categData['category_points'] = cols[5].text.strip()
-                except IndexError:
+                except Exception as e:
+                    print(f"ERROR: {e}")
                     continue
                 categories.append(categData)
         allClassData[allClassNames[classKey]]['categories'] = categories
@@ -141,8 +123,8 @@ def parseGrades(homeSourceCode):
 
     for gradeBox in gradeBoxes:
         # Filtering to get course name and corresponding grade average
-        className = gradeBox.find("a", attrs={'id': 'courseName'}).getText()
-        grade = gradeBox.find("a", attrs={'id': 'average'}).getText()
+        className = gradeBox.find("a", attrs={'id': 'courseName'}).getText().strip()
+        grade = gradeBox.find("a", attrs={'id': 'average'}).getText().strip()
 
         print(f"Your average in {className} is {grade}")
         classAndGrades[className] = grade
@@ -165,8 +147,7 @@ def getTranscriptGrades(tranSourceCode, hsOnly: bool = True):
 
     for box in gradeTranBoxes:
         # Basic CSS selector getting any span class with an id that starts with that
-        gradeData = box.select(
-            f'span[id^="plnMain_rpTranscriptGroup_lblGradeValue"]')[0]  # .select() returns a list so I have to specify index 0
+        gradeData = box.select_one(f'span[id^="plnMain_rpTranscriptGroup_lblGradeValue"]')
 
         # Skip empty grades and grades before hs if hsOnly is true
         if not gradeData:
@@ -175,11 +156,12 @@ def getTranscriptGrades(tranSourceCode, hsOnly: bool = True):
         if hsOnly and gradeLevel < 9:
             continue
 
-        courseTable = box.select(f'table[id^="plnMain_rpTranscriptGroup_dgCourses_"]')[0]
+        courseTable = box.select_one(f'table[id^="plnMain_rpTranscriptGroup_dgCourses_"]')
 
         # Filtering through the nested tables and different rows to get all previous grades
         if courseTable:
-            rows = courseTable.find_all('tr', attrs={'class': 'sg-asp-table-data-row'})
+            rows = courseTable.find_all(
+                'tr', attrs={'class': 'sg-asp-table-data-row'})
             for row in rows:
                 cols = row.find_all('td')
                 if cols:
@@ -190,15 +172,12 @@ def getTranscriptGrades(tranSourceCode, hsOnly: bool = True):
                     final = cols[4].text.strip()
 
                     grades = [sem1, sem2, final]
-                    validGrades = [
-                        int(grade) for grade in grades if grade.isdigit()
-                    ]  # Making sure all grades are numbers (some classes may be N/A)
+                    validGrades = [int(grade) for grade in grades if grade.isdigit()]  # Making sure all grades are numbers (some classes may be N/A)
 
                     if validGrades:
                         average = sum(validGrades) / len(validGrades)
-                        print(f"Grade: {gradeLevel}, Course: {courseDescription} ({courseCode}), Average: {round(average, 2)}")
-
-                        allTranGrades.append([gradeLevel, courseDescription, courseCode, round(average, 2)])
+                        # print(f"Grade: {gradeLevel}, Course: {courseDescription} ({courseCode}), Average: {round(average, 2)}")
+                        allTranGrades.append([gradeLevel, courseDescription, courseCode,round(average, 2)])
                     else:
                         print(f"Grade: {gradeLevel}, Course: {courseDescription} ({courseCode}), Average: N/A")
         else:
@@ -207,135 +186,19 @@ def getTranscriptGrades(tranSourceCode, hsOnly: bool = True):
     return allTranGrades
 
 
-# Calculating GPA based on grades
-def calcGPA(pastTranGrades: list,
-            ignoreClasses: list = [],
-            difScaleClasses: dict = {}):
-    numGrades = 0
-    gradeTotal = 0.0
-
-    for gradeInfo in pastTranGrades:
-        courseDesc = gradeInfo[1]
-        avgGrade = int(gradeInfo[3])
-
-        if courseDesc in ignoreClasses:
-            continue
-
-        if courseDesc in difScaleClasses:
-            # Using different max GPA based on provided different scale classes
-            classMaxGPA = difScaleClasses[courseDesc]
-            weightedGrade = (classMaxGPA - 1) + ((avgGrade - 90) / 10)
-        else:
-            # Using the default MAXGPA scale
-            weightedGrade = (MAXGPA - 1) + ((avgGrade - 90) / 10)
-
-        gradeTotal += weightedGrade
-        numGrades += 1
-
-    if numGrades == 0:
-        print("No grades to calculate GPA.")
-        return
-
-    average = gradeTotal / numGrades
-    print(f"CALCULATED GPA IS {round(average, 3)}")
-
-
 def getOfficialGPA(transcriptCode):
-
     transcriptSoup = BeautifulSoup(transcriptCode, 'html.parser')
     GPAtable = transcriptSoup.find('table', attrs={'id': 'plnMain_rpTranscriptGroup_tblCumGPAInfo'})  # Getting the table with GPA info
-
     if GPAtable:
-        rows = GPAtable.find_all('tr',attrs={'class': 'sg-asp-table-data-row'})
+        rows = GPAtable.find_all('tr', attrs={'class': 'sg-asp-table-data-row'})
         # Getting every row and corresponding data from columns
         for row in rows:
             cols = row.find_all('td')
             if cols:
                 GPAtype = cols[0].find('span').text.strip()
                 GPAval = cols[1].find('span').text.strip()
-                rank = cols[2].find('span').text.strip() if cols[2].find(
-                    'span') else "N/A"  # Handle empty rank
+                rank = cols[2].find('span').text.strip() if cols[2].find('span') else "N/A"  # Handle empty rank
 
                 print(f"GPA Type: {GPAtype}, GPA: {GPAval}, Rank: {rank}")
     else:
         print("GPA table not found.")
-
-
-def modifyTranGrades(tranGrades: list, gradesToModify: dict):
-    updatedTranGrades = [
-        [
-            gradeInfo[0],
-            gradeInfo[1],
-            gradeInfo[2],
-            gradesToModify[gradeInfo[1]]
-            if gradeInfo[1] in gradesToModify else gradeInfo[3],
-        ]  # Made it a list instead of tuple in case I want to add info later
-        for gradeInfo in tranGrades
-    ]  # Using list comprehension to overcomplicate things 😎
-
-    return updatedTranGrades
-
-
-def addGrade(currAssignments: list, grade: dict):  # Made a seperate function for this in case I need it for frontend (I prob wont)
-    return currAssignments.append(grade)
-
-
-# REMINDER FOR ME LATER: For this to work I need to update the max_points and assignments by prompting the user and asking for out of what score the added assignment is
-def calcAverage(assignments: list, categories: list):
-    categoriesAndDetails = []
-    categoryNames = []
-    usedCategories = []
-
-    maxGrade = 0
-    classGrade = 0
-
-    # print(f"CLASS CATEGORIES: {categories}")
-
-    for category in categories:
-        try:
-            categoryDetails = {'running_points': 0.0}
-            categoryDetails['name'] = category['category_name']
-            print(f"CATEGORY NAME: {categoryDetails['name']}")
-            categoryDetails['max_points'] = float(category['max_points'])
-            categoryDetails['weight'] = float(category['category_weight'])
-            categoriesAndDetails.append(categoryDetails)
-            categoryNames.append(categoryDetails['name'])
-        except Exception as e:
-            print(f"Exception: {e}")
-            print(f"Category may not have expected values.\nCategory:\n{category}")
-
-    for assignment in assignments:
-        try:
-            assignmentCategory = assignment['category']
-            if assignmentCategory in categoryNames:
-
-                if assignmentCategory not in usedCategories:
-                    usedCategories.append(assignmentCategory)
-                    categIdx = categoryNames.index(assignmentCategory)
-                    maxGrade += categoriesAndDetails[categIdx]['weight'] * 100
-
-                if assignment.get('score'):  # Making sure score isn't empty and exists
-                    categoriesAndDetails[categoryNames.index(assignmentCategory)]['running_points'] += float(assignment['score'])
-
-            else:
-                print(f"Category: {assignmentCategory} Not Found")
-        except:
-            print("NO CATEGORY KEY OR INVALID DATA")
-        # print(assignment)
-
-    for category in categoriesAndDetails:
-        try:
-            print(category)
-            if category['max_points'] != 0:
-                classGrade += (category['running_points'] / category['max_points']) * category['weight'] * 100
-            else:
-                print(f"Warning: Category '{category['name']}' has max_points of 0.")
-        except:
-            print(category)
-    if maxGrade:
-        print(f"MAXGRADE:{maxGrade}\nCLASSGRADE:{classGrade}")
-        return (classGrade / maxGrade) * 100
-    return classGrade
-
-def changeGrade():
-    return

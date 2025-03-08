@@ -1,7 +1,7 @@
-# TODO Fix bug where certain grading categories dont show up (Primarily in IED)
 from sessionStarter import login
 from dataParsers import *
 from pageScrapers import *
+from gradeOperations import *
 import os
 
 BASEURL = os.getenv("BASELINK")
@@ -15,19 +15,35 @@ homeSC = getHomeScreen(session)
 grades = parseGrades(homeSC)
 transcript = getTranscript(session)
 tranGrades = getTranscriptGrades(transcript)
-# classAssignmentIDs = getAssignmentPageIDs(homeSC) # No longer useful for new assignment scraping strategy
 allAssignmentData = getAssignmentsForClass(session)
 classAssignments = parseAssignments(allAssignmentData)
 
-for className in classAssignments:
-    print(f"\n\nASSIGNMENTS FOR {className}:\n\n")
-    print(calcAverage(classAssignments[className]['assignments'], classAssignments[className]['categories']))
-    # for assignmentData in classAssignments[className]['assignments']:
-    #     for data in assignmentData:
-    #         print(f"{data}: {assignmentData[data]}")
-    #     print()
+theoGrade = {'name': 'This Better Work', 'category': 'Daily', 'weight': 100, 'score': 0}
+classesToChange = ["Adv Spanish II"]
+for classToChange in classesToChange:
+    print(f"\nADDING THEORETICAL GRADE TO {classToChange}: {theoGrade}")
+    addTheoreticalGrade(classAssignments[classToChange]['assignments'], classAssignments[classToChange]['categories'], theoGrade)
+print()
 
-# print(getAssignmentsForClass(session, "2353121", "1", "3"))
-tranGrades = modifyTranGrades(tranGrades, {'CHEM':'0'})
-calcGPA(tranGrades, ignoreClasses=['TACS1', 'TAGMPD', 'LIFEFIT', 'W HIST', 'APTACSAL', 'IED', 'TH1TECH', 'VIDGD'], difScaleClasses={'SPAN 1':5.0})
-getOfficialGPA(transcript)
+classAverages = {}
+for className in classAssignments:
+    print(f"Assignments Average For: {repr(className)}:")
+    newClassAverage = calcAverage(classAssignments[className]['assignments'], classAssignments[className]['categories'])
+    print(newClassAverage)
+    classAverages[className] = newClassAverage # Storing the average
+print()
+
+# Update transcript grade with new class average
+for averageInfo in classAverages:
+    tranGrades.append([10, averageInfo, '', classAverages[averageInfo]]) # The blank stuff is for ID, 10 is just the grade of the student which doesn't matter right now
+
+updatedTranValue = {'CHEM': '0'}
+print(f"UPDATED CLASS VALUE IN TRANSCRIPT: {updatedTranValue}")
+tranGrades = modifyTranGrades(tranGrades, updatedTranValue)
+
+difScaleClass = {'SPAN 1': 5.0}
+print(f"Different Scale Class: {difScaleClass}")
+calculatedGPA = calcGPA(tranGrades, ignoreClasses=['TACS1', 'TAGMPD', 'LIFEFIT', 'W HIST', 'APTACSAL', 'IED', 'TH1TECH', 'VIDGD'], difScaleClasses=difScaleClass)
+# print(tranGrades)
+print(f"Calculated GPA Based On Completed Semesters: {calculatedGPA}")
+offGPA = getOfficialGPA(transcript)
