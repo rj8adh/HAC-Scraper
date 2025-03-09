@@ -3,6 +3,9 @@ from dataParsers import *
 from pageScrapers import *
 from gradeOperations import *
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASEURL = os.getenv("BASELINK")
 username = os.getenv('HACUSERNAME')
