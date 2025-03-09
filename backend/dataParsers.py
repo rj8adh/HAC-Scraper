@@ -189,6 +189,7 @@ def getTranscriptGrades(tranSourceCode, hsOnly: bool = True):
 def getOfficialGPA(transcriptCode):
     transcriptSoup = BeautifulSoup(transcriptCode, 'html.parser')
     GPAtable = transcriptSoup.find('table', attrs={'id': 'plnMain_rpTranscriptGroup_tblCumGPAInfo'})  # Getting the table with GPA info
+    gpaAndRank = {}
     if GPAtable:
         rows = GPAtable.find_all('tr', attrs={'class': 'sg-asp-table-data-row'})
         # Getting every row and corresponding data from columns
@@ -200,5 +201,9 @@ def getOfficialGPA(transcriptCode):
                 rank = cols[2].find('span').text.strip() if cols[2].find('span') else "N/A"  # Handle empty rank
 
                 print(f"GPA Type: {GPAtype}, GPA: {GPAval}, Rank: {rank}")
+                gpaAndRank[GPAtype] = [GPAval, rank]
+        return "TESTING"
+
     else:
         print("GPA table not found.")
+        return "GPA TABLE NOT FOUND"
