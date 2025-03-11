@@ -202,7 +202,7 @@ def getOfficialGPA(transcriptCode):
 
                 print(f"GPA Type: {GPAtype}, GPA: {GPAval}, Rank: {rank}")
                 gpaAndRank[GPAtype] = [GPAval, rank]
-        return "TESTING"
+        return gpaAndRank
 
     else:
         print("GPA table not found.")

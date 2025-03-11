@@ -1,3 +1,4 @@
+#TODO Add reload/rescrape api call
 import uvicorn
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,7 +22,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-sessions: Dict[str, requests.Session] = {}  # Storing active sessions in a dictionary
+# Storing data in variables to improve efficiency so you don't have to keep scraping
+global sessions, assignments, transcriptGrades, currentGrades, officialGPAandRank
+sessions: Dict[str, requests.Session] = {} # Using username for key to add security
+assignments: Dict[str, str] = {}
+transcriptGrades: Dict[str, str] = {}
+currentGrades: Dict[str, str] = {}
+officialGPAandRank: Dict[str, str] = {}
 
 class Credentials(BaseModel):
     username: str
@@ -54,30 +61,41 @@ def login_api(credentials: Credentials):
 
 @app.get("/grades")
 def get_grades(username: str):
+    global currentGrades
+    if currentGrades:
+        return currentGrades
     try:
         session = sessions.get(username)
         if not session:
             raise HTTPException(status_code=401, detail="Session not found")
         homeSC = getHomeScreen(session)
         grades = parseGrades(homeSC)
+        currentGrades = grades
         return grades
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting grades: {e}")
 
 @app.get("/transcript")
 def get_transcript(username: str):
+    global transcriptGrades
+    if transcriptGrades:
+        return transcriptGrades
     try:
         session = sessions.get(username)
         if not session:
             raise HTTPException(status_code=401, detail="Session not found")
         transcript = getTranscript(session)
         tranGrades = getTranscriptGrades(transcript)
+        transcriptGrades = tranGrades
         return tranGrades
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting transcript: {e}")
 
 @app.get("/assignments")
 def get_assignments(username: str):
+    global assignments
+    if assignments:
+        return assignments # To improve efficiency, loading previous saved assignments from this session
     try:
         print("getting assignments")
         session = sessions.get(username)
@@ -85,6 +103,7 @@ def get_assignments(username: str):
             raise HTTPException(status_code=401, detail="Session not found")
         allAssignmentData = getAssignmentsForClass(session)
         classAssignments = parseAssignments(allAssignmentData)
+        assignments = classAssignments
         return classAssignments
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting assignments: {e}")
@@ -145,6 +164,9 @@ def calculate_gpa_api(dif_scale_classes: DifScaleClasses, username: str):
 
 @app.get("/official_gpa")
 def get_official_gpa_api(username: str):
+    global officialGPAandRank
+    if officialGPAandRank:
+        return officialGPAandRank
     try:
         session = sessions.get(username)
         if not session:
@@ -152,6 +174,7 @@ def get_official_gpa_api(username: str):
         transcript = getTranscript(session)
         official_gpa = getOfficialGPA(transcript)
         print(f"OFFICIAL GPA: {official_gpa}")
+        officialGPAandRank = official_gpa
         return official_gpa
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting official GPA: {e}")
