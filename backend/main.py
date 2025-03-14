@@ -29,6 +29,7 @@ assignments: Dict[str, str] = {}
 transcriptGrades: Dict[str, str] = {}
 currentGrades: Dict[str, str] = {}
 officialGPAandRank: Dict[str, str] = {}
+theoreticalGrades: Dict[str, str] = {}
 
 class Credentials(BaseModel):
     username: str
@@ -46,6 +47,9 @@ class UpdateTranscriptGrades(BaseModel):
 
 class DifScaleClasses(BaseModel):
     classes: Dict[str, float]
+
+class IgnoreClasses(BaseModel):
+    classesToIgnore : list[str]
 
 @app.post("/login")
 def login_api(credentials: Credentials):
@@ -108,16 +112,23 @@ def get_assignments(username: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting assignments: {e}")
 
+#TODO Get this script to return assignments for certain class
 @app.post("/add_theoretical_grade/{class_name}")
 def add_theoretical_grade_api(class_name: str, theoretical_grade: TheoreticalGrade, username: str):
+    global assignments
+    
     try:
         session = sessions.get(username)
         if not session:
             raise HTTPException(status_code=401, detail="Session not found")
-        allAssignmentData = getAssignmentsForClass(session)
-        classAssignments = parseAssignments(allAssignmentData)
+        classAssignments = assignments.get(class_name)
+        
+        if not classAssignments:
+            allAssignmentData = getAssignmentsForClass(session)
+            classAssignments = parseAssignments(allAssignmentData)
         addTheoreticalGrade(classAssignments[class_name]['assignments'], classAssignments[class_name]['categories'], theoretical_grade.dict())
-        return {"message": f"Theoretical grade added to {class_name}"}
+        print(calcAverage(classAssignments))
+        return classAssignments
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error adding theoretical grade: {e}")
 
@@ -150,14 +161,16 @@ def update_transcript_grades_api(update_grades: UpdateTranscriptGrades, username
         raise HTTPException(status_code=500, detail=f"Error updating transcript grades: {e}")
 
 @app.post("/calculate_gpa")
-def calculate_gpa_api(dif_scale_classes: DifScaleClasses, username: str):
+def calculate_gpa_api(dif_scale_classes: DifScaleClasses, ignoredClasses: IgnoreClasses, username: str):
+    global tranGrades
     try:
         session = sessions.get(username)
         if not session:
             raise HTTPException(status_code=401, detail="Session not found")
-        transcript = getTranscript(session)
-        tranGrades = getTranscriptGrades(transcript)
-        calculatedGPA = calcGPA(tranGrades, ignoreClasses=['TACS1', 'TAGMPD', 'LIFEFIT', 'W HIST', 'APTACSAL', 'IED', 'TH1TECH', 'VIDGD'], difScaleClasses=dif_scale_classes.classes)
+        if not tranGrades:
+            transcript = getTranscript(session)
+            tranGrades = getTranscriptGrades(transcript)
+        calculatedGPA = calcGPA(tranGrades, ignoreClasses=ignoredClasses.classesToIgnore, difScaleClasses=dif_scale_classes.classes)
         return {"gpa": calculatedGPA}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating GPA: {e}")

@@ -1,8 +1,10 @@
-POST http://localhost:8000/login
+POST /add_theoretical_grade/Advanced English II?username=s172327
+Host: localhost:8000
 Content-Type: application/json
 
 {
-    "username": "s172327",
-    "password": "", // You thought you were getting my password, didn't you
-    "baseURL": "https://accesscenter.roundrockisd.org/"
+    "name": "Whoopsies",
+    "category": "Homework",
+    "weight": 20.0,
+    "score": 0
 }
